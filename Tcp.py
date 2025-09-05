@@ -52,6 +52,8 @@ def zoom_out(sock, rate=100):
 def zoom_stop(sock):
     send_command(sock, 0x25, zoom_rate=0)
 
+def set_zoom(sock, zoom_ratio=50):
+    send_command(sock, 0x5A, x=zoom_ratio)
 
 # ---------- Komutları işleyen fonksiyon ----------
 def handle_client(conn, gimbal_sock):
