@@ -3,7 +3,8 @@ import struct
 import threading
 
 # ---------- Paket oluşturma fonksiyonu ----------
-def send_command(sock, cmd, x=0, y=0):
+def send_command(sock, cmd, x=0, y=0, zoom_rate=0):
+    
     packet = bytearray(16)
     packet[0] = 0xEB
     packet[1] = 0x90
@@ -11,7 +12,11 @@ def send_command(sock, cmd, x=0, y=0):
 
     struct.pack_into('<h', packet, 3, x)
     struct.pack_into('<h', packet, 5, y)
-    for i in range(7, 15):
+
+    packet[7] = 0x00
+    packet[8] = zoom_rate
+
+    for i in range(9, 15):
         packet[i] = 0x00
 
     checksum = sum(packet[0:15]) & 0xFF
@@ -37,6 +42,17 @@ def stop(sock):
     send_command(sock, 0x24, x=0, y=0)
 
 
+# ---------- Zoom Fonksiyonları ----------
+def zoom_in(sock, rate=100):
+    send_command(sock, 0x25, zoom_rate=rate)
+
+def zoom_out(sock, rate=100):
+    send_command(sock, 0x25, zoom_rate=-rate & 0xFF)
+
+def zoom_stop(sock):
+    send_command(sock, 0x25, zoom_rate=0)
+
+
 # ---------- Komutları işleyen fonksiyon ----------
 def handle_client(conn, gimbal_sock):
     with conn:
@@ -48,7 +64,7 @@ def handle_client(conn, gimbal_sock):
             command = data.decode().strip().lower()
             print("İstemciden gelen komut:", command)
 
-            # Komutu parse et
+            # Hareket komutları
             if command.startswith("right"):
                 _, val = command.split()
                 move_right(gimbal_sock, int(val))
@@ -63,6 +79,20 @@ def handle_client(conn, gimbal_sock):
                 move_down(gimbal_sock, int(val))
             elif command == "stop":
                 stop(gimbal_sock)
+
+            # Zoom komutları
+            elif command.startswith("zoomin"):
+                _, val = command.split()
+                zoom_in(gimbal_sock, int(val))
+            elif command.startswith("zoomout"):
+                _, val = command.split()
+                zoom_out(gimbal_sock, int(val))
+            elif command == "zoomstop":
+                zoom_stop(gimbal_sock)
+            elif command.startswith("setzoom"):
+                _, val = command.split()
+                set_zoom(gimbal_sock, int(val))
+
             else:
                 print("Geçersiz komut:", command)
 
