@@ -15,7 +15,6 @@ def send_command(sock, cmd, x=0, y=0, zoom_rate=0):
 
     packet[7] = 0x00
     packet[8] = zoom_rate
-
     for i in range(9, 15):
         packet[i] = 0x00
 
