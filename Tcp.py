@@ -5,22 +5,22 @@ import threading
 # ---------- Paket oluşturma fonksiyonu ----------
 def send_command(sock, cmd, x=0, y=0, zoom_rate=0):
     
-    packet = bytearray(16)
-    packet[0] = 0xEB
-    packet[1] = 0x90
-    packet[2] = cmd
+    data = bytearray(7)
+    data[0] = cmd
+    struct.pack_into('<h', data, 1, x)   
+    struct.pack_into('<h', data, 3, y)   
+    data[5] = zoom_rate & 0xFF          
+    data[6] = 0x00                       
 
-    struct.pack_into('<h', packet, 3, x)
-    struct.pack_into('<h', packet, 5, y)
+    packet = bytearray()
+    packet.append(0xEB)                  
+    packet.append(0x90)                
+    packet.append(len(data))             
+    packet.extend(data)
 
-    packet[7] = 0x00
-    packet[8] = zoom_rate
-    for i in range(9, 15):
-        packet[i] = 0x00
+    checksum = sum(packet) & 0xFF
+    packet.append(checksum)
 
-    checksum = sum(packet[0:15]) & 0xFF
-    packet[15] = checksum
-    
     sock.sendall(packet)
 
 
@@ -42,17 +42,18 @@ def stop(sock):
 
 
 # ---------- Zoom Fonksiyonları ----------
-def zoom_in(sock, rate=100):
+def zoom_in(sock, rate=10):
     send_command(sock, 0x25, zoom_rate=rate)
 
-def zoom_out(sock, rate=100):
-    send_command(sock, 0x25, zoom_rate=-rate & 0xFF)
+def zoom_out(sock, rate=10):
+    send_command(sock, 0x25, zoom_rate=(256 - rate))
 
 def zoom_stop(sock):
     send_command(sock, 0x25, zoom_rate=0)
 
 def set_zoom(sock, zoom_ratio=50):
     send_command(sock, 0x5A, x=zoom_ratio)
+
 
 # ---------- Komutları işleyen fonksiyon ----------
 def handle_client(conn, gimbal_sock):
